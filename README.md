@@ -1,451 +1,473 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Gestão - Consolidação</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #1a202c;
-            color: #e2e8f0;
-        }
-        .container {
-            max-width: 1400px;
-        }
-        .card {
-            background-color: #2d3748;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-        .chart-container {
-            width: 100%;
-            max-width: 300px;
-            margin: 0 auto;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Gestão - DHL Consolidação</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FFCC00; /* Amarelo DHL */
+            color: #333333; /* Texto escuro para contraste */
+        }
+        .container {
+            max-width: 1400px;
+        }
+        .card {
+            background-color: #FFFFFF; /* Fundo branco para cards */
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .chart-container-small {
+            width: 100%;
+            max-width: 200px;
+            margin: 0 auto;
+        }
+        /* Cores específicas da DHL */
+        .text-dhl-red { color: #D40511; } /* Vermelho DHL */
+        .bg-dhl-red { background-color: #D40511; }
+        .hover\:bg-dhl-red-dark:hover { background-color: #a0030c; }
+        .bg-dhl-yellow { background-color: #FFCC00; }
+        .border-dhl-red { border-color: #D40511; }
+    </style>
 </head>
 <body class="p-6">
-    <div class="container mx-auto">
-        <h1 class="text-3xl font-bold mb-8 text-center text-white">Painel de Gestão - Consolidação</h1>
-
-        <!-- Seção de Métricas Principais e Controles Manuais -->
-        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 text-center">
-            <div class="card">
-                <div class="text-sm font-semibold text-gray-400">Total de Pacotes (Meta)</div>
-                <div class="flex items-center justify-center mt-2">
-                    <input id="totalPacotesInput" type="number" class="w-24 text-center bg-gray-700 text-white rounded-md p-1" placeholder="5000">
-                    <button id="setPacotesBtn" class="ml-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded-md transition-transform transform hover:scale-105">Definir</button>
-                </div>
-            </div>
-            <div class="card">
-                <div class="text-sm font-semibold text-gray-400">Pacotes Descarregados</div>
-                <div id="pacotesDescarregados" class="text-4xl font-bold mt-2 text-green-400">0</div>
-            </div>
-            <div class="card">
-                <div class="text-sm font-semibold text-gray-400">Caminhões à Espera</div>
-                <div id="caminhoesEspera" class="text-4xl font-bold mt-2 text-yellow-400">0</div>
-            </div>
-            <div class="card">
-                <div class="text-sm font-semibold text-gray-400">Caminhões Descarregados</div>
-                <div id="caminhoesDescarregados" class="text-4xl font-bold mt-2 text-red-400">0</div>
-            </div>
-        </div>
-        
-        <!-- Botão de Download em uma seção separada -->
-        <div class="flex justify-center mb-8">
-            <button id="downloadBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-md transition-transform transform hover:scale-105">
-                <i class="fas fa-download mr-2"></i> Baixar Dados
-            </button>
+    <div class="container mx-auto">
+        <div class="flex justify-center items-center mb-8">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/DHL_logo.svg/2560px-DHL_logo.svg.png" alt="DHL Logo" class="h-16 mr-4">
+            <h1 class="text-3xl font-bold text-dhl-red">Painel de Gestão - Consolidação</h1>
         </div>
 
-        <!-- Seção de Adição Manual de Caminhões -->
-        <div class="card mb-8">
-            <h2 class="text-xl font-semibold mb-4">Adicionar Novo Motorista</h2>
-            <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 flex-wrap">
-                <select id="empresaSelect" class="bg-gray-700 text-white rounded-md p-2">
-                    <option value="Prálog">Prálog</option>
-                    <option value="Imediato">Imediato</option>
-                    <option value="Hawk">Hawk</option>
-                    <option value="Ontime">Ontime</option>
-                </select>
-                <input id="motoristaNomeInput" type="text" class="bg-gray-700 text-white rounded-md p-2" placeholder="Nome do Motorista" required>
-                <input id="pacotesInput" type="number" class="bg-gray-700 text-white rounded-md p-2" placeholder="Nº de Pacotes" required>
-                <button id="addMotoristaBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition-transform transform hover:scale-105">Adicionar Motorista</button>
-            </div>
-        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 text-center">
+            <div class="card">
+                <div class="text-sm font-semibold text-gray-600">Total de Pacotes (Meta)</div>
+                <div class="flex items-center justify-center mt-2">
+                    <input id="totalPacotesInput" type="number" class="w-24 text-center bg-gray-100 text-gray-800 rounded-md p-1 border border-gray-300" placeholder="5000">
+                    <button id="setPacotesBtn" class="ml-2 bg-dhl-red hover:bg-dhl-red-dark text-white font-bold py-1 px-2 rounded-md transition-transform transform hover:scale-105">Definir</button>
+                </div>
+            </div>
+            <div class="card">
+                <div class="text-sm font-semibold text-gray-600">Pacotes Descarregados</div>
+                <div id="pacotesDescarregados" class="text-4xl font-bold mt-2 text-green-600">0</div>
+            </div>
+            <div class="card">
+                <div class="text-sm font-semibold text-gray-600">Caminhões à Espera</div>
+                <div id="caminhoesEspera" class="text-4xl font-bold mt-2 text-yellow-600">0</div>
+            </div>
+            <div class="card">
+                <div class="text-sm font-semibold text-gray-600">Caminhões Descarregados</div>
+                <div id="caminhoesDescarregados" class="text-4xl font-bold mt-2 text-dhl-red">0</div>
+            </div>
+        </div>
+        
+        <div class="flex justify-center items-center space-x-4 mb-8">
+            <button id="downloadBtn" class="bg-dhl-red hover:bg-dhl-red-dark text-white font-bold py-2 px-6 rounded-md transition-transform transform hover:scale-105">
+                <i class="fas fa-download mr-2"></i> Baixar Dados
+            </button>
+            <button id="resetBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-md transition-transform transform hover:scale-105">
+                <i class="fas fa-sync-alt mr-2"></i> Resetar Dados do Dia
+            </button>
+        </div>
 
-        <!-- Seção Principal com Filas, Docas e Gráficos -->
-        <div class="grid lg:grid-cols-3 gap-6">
-            <!-- Coluna 1: Filas e Docas -->
-            <div class="lg:col-span-2 space-y-6">
-                <!-- Seção de Filas de Espera -->
-                <div class="card">
-                    <h2 class="text-xl font-semibold mb-4">Filas de Espera</h2>
-                    <div class="grid md:grid-cols-2 gap-4" id="filasEsperaContainer">
-                        <!-- As filas serão geradas dinamicamente aqui -->
-                    </div>
-                </div>
+        <div class="card mb-8">
+            <h2 class="text-xl font-semibold mb-4 text-dhl-red">Adicionar Novo Motorista</h2>
+            <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 flex-wrap">
+                <select id="empresaSelect" class="bg-gray-100 text-gray-800 rounded-md p-2 border border-gray-300">
+                    <option value="Prálog">Prálog</option>
+                    <option value="Imediato">Imediato</option>
+                    <option value="Hawk">Hawk</option>
+                    <option value="Ontime">Ontime</option>
+                </select>
+                <input id="motoristaNomeInput" type="text" class="bg-gray-100 text-gray-800 rounded-md p-2 border border-gray-300" placeholder="Nome do Motorista" required>
+                <input id="pacotesInput" type="number" class="bg-gray-100 text-gray-800 rounded-md p-2 border border-gray-300" placeholder="Nº de Pacotes" required>
+                <button id="addMotoristaBtn" class="bg-dhl-red hover:bg-dhl-red-dark text-white font-bold py-2 px-4 rounded-md transition-transform transform hover:scale-105">Adicionar Motorista</button>
+            </div>
+        </div>
 
-                <!-- Seção de Docas de Desembarque -->
-                <div class="card">
-                    <h2 class="text-xl font-semibold mb-4">Docas de Desembarque</h2>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" id="docasContainer">
-                        <!-- As docas serão geradas dinamicamente aqui -->
-                    </div>
-                </div>
-            </div>
+        <div class="grid lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-6">
+                <div class="card">
+                    <h2 class="text-xl font-semibold mb-4 text-dhl-red">Filas de Espera</h2>
+                    <div class="grid md:grid-cols-2 gap-4" id="filasEsperaContainer">
+                                            </div>
+                </div>
 
-            <!-- Coluna 2: Gráficos -->
-            <div class="lg:col-span-1 space-y-6">
-                <!-- Gráficos de rosca lado a lado -->
-                <div class="card flex flex-col sm:flex-row items-center justify-around space-y-4 sm:space-y-0 sm:space-x-4">
-                    <div class="chart-container">
-                        <h2 class="text-lg font-semibold mb-2 text-center">Volume Descarregado</h2>
-                        <canvas id="volumeChart"></canvas>
-                    </div>
-                    <div class="chart-container">
-                        <h2 class="text-lg font-semibold mb-2 text-center">Pacotes por Empresa</h2>
-                        <canvas id="pacotesEmpresaChart"></canvas>
-                    </div>
-                </div>
-                <!-- Gráfico de barras -->
-                <div class="card">
-                    <h2 class="text-xl font-semibold mb-4 text-center">Entradas por Hora</h2>
-                    <canvas id="horariosChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
+                <div class="card">
+                    <h2 class="text-xl font-semibold mb-4 text-dhl-red">Docas de Desembarque</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" id="docasContainer">
+                                            </div>
+                </div>
+            </div>
 
-    <!-- Modal de Alerta Customizado -->
-    <div id="customAlert" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4">
-        <div class="bg-gray-800 p-6 rounded-lg text-white text-center w-full max-w-sm">
-            <p id="alertMessage" class="mb-4"></p>
-            <button onclick="document.getElementById('customAlert').classList.add('hidden')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">OK</button>
-        </div>
-    </div>
+            <div class="lg:col-span-1 space-y-6">
+                <div class="card flex flex-col sm:flex-row items-center justify-around space-y-4 sm:space-y-0 sm:space-x-4">
+                    <div class="chart-container-small">
+                        <h2 class="text-lg font-semibold mb-2 text-center text-gray-700">Volume Descarregado</h2>
+                        <canvas id="volumeChart"></canvas>
+                    </div>
+                    <div class="chart-container-small">
+                        <h2 class="text-lg font-semibold mb-2 text-center text-gray-700">Pacotes por Empresa</h2>
+                        <canvas id="pacotesEmpresaChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2 class="text-xl font-semibold mb-4 text-center text-dhl-red">Entradas por Hora</h2>
+                    <canvas id="horariosChart" style="max-height: 400px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <script>
-        // Use a função para mostrar alertas customizados em vez de alert()
-        const showAlert = (message) => {
-            const alertBox = document.getElementById('customAlert');
-            document.getElementById('alertMessage').textContent = message;
-            alertBox.classList.remove('hidden');
-        };
+        <div id="customAlert" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-lg text-gray-800 text-center w-full max-w-sm">
+            <p id="alertMessage" class="mb-4"></p>
+            <button onclick="document.getElementById('customAlert').classList.add('hidden')" class="bg-dhl-red hover:bg-dhl-red-dark text-white font-bold py-2 px-4 rounded">OK</button>
+        </div>
+    </div>
 
-        // Dados do aplicativo
-        const empresas = ['Prálog', 'Imediato', 'Hawk', 'Ontime'];
-        let docas = Array(9).fill(null);
-        let filas = { Prálog: [], Imediato: [], Hawk: [], Ontime: [] };
-        let pacotesDescarregados = localStorage.getItem('pacotesDescarregados') ? parseInt(localStorage.getItem('pacotesDescarregados')) : 0;
-        let totalPacotesMeta = localStorage.getItem('totalPacotesMeta') ? parseInt(localStorage.getItem('totalPacotesMeta')) : 5000;
-        let historicoEntradas = JSON.parse(localStorage.getItem('historicoEntradas')) || {};
-        let historicoPacotesEmpresa = JSON.parse(localStorage.getItem('historicoPacotesEmpresa')) || {};
-        let logDescarregamento = JSON.parse(localStorage.getItem('logDescarregamento')) || [];
+        <div id="docaModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-lg text-gray-800 w-full max-w-md">
+            <h2 class="text-xl font-semibold mb-4 text-dhl-red">Escolha a Doca</h2>
+            <p id="modalMessage" class="mb-4 text-sm text-gray-700"></p>
+            <div class="grid grid-cols-3 gap-4 mb-4" id="docasModalContainer">
+                            </div>
+            <button onclick="document.getElementById('docaModal').classList.add('hidden')" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded w-full">Cancelar</button>
+        </div>
+    </div>
 
-        // Inicia o estado da aplicação
-        const inicializarApp = () => {
-            empresas.forEach(empresa => {
-                if (!historicoPacotesEmpresa[empresa]) {
-                    historicoPacotesEmpresa[empresa] = 0;
-                }
-            });
-            document.getElementById('totalPacotesInput').value = totalPacotesMeta;
-            atualizarUI();
-            inicializarGraficos();
-        };
+    <script>
+        const showAlert = (message) => {
+            const alertBox = document.getElementById('customAlert');
+            document.getElementById('alertMessage').textContent = message;
+            alertBox.classList.remove('hidden');
+        };
 
-        // Função para formatar tempo em HH:MM:SS
-        const formatarTempo = (segundos) => {
-            const h = Math.floor(segundos / 3600).toString().padStart(2, '0');
-            const m = Math.floor((segundos % 3600) / 60).toString().padStart(2, '0');
-            const s = Math.floor(segundos % 60).toString().padStart(2, '0');
-            return `${h}:${m}:${s}`;
-        };
+        const empresas = ['Prálog', 'Imediato', 'Hawk', 'Ontime'];
+        let docas = Array(9).fill(null);
+        let filas = { Prálog: [], Imediato: [], Hawk: [], Ontime: [] };
+        let pacotesDescarregados = localStorage.getItem('pacotesDescarregados') ? parseInt(localStorage.getItem('pacotesDescarregados')) : 0;
+        let totalPacotesMeta = localStorage.getItem('totalPacotesMeta') ? parseInt(localStorage.getItem('totalPacotesMeta')) : 5000;
+        let historicoEntradas = JSON.parse(localStorage.getItem('historicoEntradas')) || {};
+        let historicoPacotesEmpresa = JSON.parse(localStorage.getItem('historicoPacotesEmpresa')) || {};
+        let logDescarregamento = JSON.parse(localStorage.getItem('logDescarregamento')) || [];
 
-        // Função para atualizar os cronômetros das docas ativas
-        setInterval(() => {
-            docas.forEach((caminhao, index) => {
-                if (caminhao && caminhao.status !== 'finalizado') {
-                    const timerElement = document.getElementById(`timer-${index}`);
-                    if (timerElement) {
-                        const tempoDecorrido = (new Date() - caminhao.horaInicio) / 1000;
-                        timerElement.textContent = formatarTempo(tempoDecorrido);
-                    }
-                }
-            });
-        }, 1000);
+        const inicializarApp = () => {
+            empresas.forEach(empresa => {
+                if (!historicoPacotesEmpresa[empresa]) {
+                    historicoPacotesEmpresa[empresa] = 0;
+                }
+            });
+            document.getElementById('totalPacotesInput').value = totalPacotesMeta;
+            atualizarUI();
+            inicializarGraficos();
+        };
 
-        // Função para levar um caminhão da fila para uma doca
-        const docarCaminhao = (filaEmpresa, indexCaminhao) => {
-            // Encontrar uma doca livre
-            const docaLivreIndex = docas.findIndex(doca => doca === null);
-            if (docaLivreIndex === -1) {
-                showAlert('Não há docas disponíveis!');
-                return;
-            }
+        const formatarTempo = (segundos) => {
+            const h = Math.floor(segundos / 3600).toString().padStart(2, '0');
+            const m = Math.floor((segundos % 3600) / 60).toString().padStart(2, '0');
+            const s = Math.floor(segundos % 60).toString().padStart(2, '0');
+            return `${h}:${m}:${s}`;
+        };
 
-            const caminhao = filas[filaEmpresa].splice(indexCaminhao, 1)[0];
-            caminhao.doca = docaLivreIndex + 1;
-            caminhao.horaInicio = new Date();
-            docas[docaLivreIndex] = caminhao;
-            
-            atualizarUI();
-        };
+        setInterval(() => {
+            docas.forEach((caminhao, index) => {
+                if (caminhao && caminhao.status !== 'finalizado') {
+                    const timerElement = document.getElementById(`timer-${index}`);
+                    if (timerElement) {
+                        const tempoDecorrido = (new Date() - caminhao.horaInicio) / 1000;
+                        timerElement.textContent = formatarTempo(tempoDecorrido);
+                    }
+                }
+            });
+        }, 1000);
 
-        // Função para finalizar o descarregamento de um caminhão
-        const finalizarCaminhao = (docaIndex) => {
-            const caminhao = docas[docaIndex];
-            if (!caminhao) return;
+        const docarCaminhao = (filaEmpresa, indexCaminhao) => {
+            const docasDisponiveis = docas.map((d, i) => d === null ? i : -1).filter(i => i !== -1);
+            if (docasDisponiveis.length === 0) {
+                showAlert('Não há docas disponíveis!');
+                return;
+            }
 
-            const tempoDecorrido = (new Date() - caminhao.horaInicio) / 1000;
-            const tempoDecorridoFormatado = formatarTempo(tempoDecorrido);
-            pacotesDescarregados += caminhao.pacotes;
-            
-            const horaEntrada = new Date(caminhao.horaInicio).getHours();
-            historicoEntradas[horaEntrada] = (historicoEntradas[horaEntrada] || 0) + 1;
+            const caminhao = filas[filaEmpresa][indexCaminhao];
 
-            historicoPacotesEmpresa[caminhao.empresa] += caminhao.pacotes;
+            const modal = document.getElementById('docaModal');
+            const docasModalContainer = document.getElementById('docasModalContainer');
+            const modalMessage = document.getElementById('modalMessage');
+            docasModalContainer.innerHTML = '';
+            modalMessage.textContent = `Escolha uma doca para o motorista ${caminhao.nome} (${caminhao.empresa}):`;
 
-            // Adiciona o evento ao log, incluindo a doca
-            logDescarregamento.push({
-                data: new Date().toLocaleDateString(),
-                hora: new Date().toLocaleTimeString(),
-                motorista: caminhao.nome,
-                empresa: caminhao.empresa,
-                pacotes: caminhao.pacotes,
-                tempoNaDoca: tempoDecorridoFormatado,
-                doca: caminhao.doca
-            });
+            docasDisponiveis.forEach(docaIndex => {
+                const button = document.createElement('button');
+                button.textContent = `Doca ${docaIndex + 1}`;
+                button.className = 'bg-dhl-red hover:bg-dhl-red-dark text-white font-bold py-2 px-4 rounded transition-transform transform hover:scale-105';
+                button.onclick = () => {
+                    const caminhaoParaDocar = filas[filaEmpresa].splice(indexCaminhao, 1)[0];
+                    caminhaoParaDocar.doca = docaIndex + 1;
+                    caminhaoParaDocar.horaInicio = new Date();
+                    docas[docaIndex] = caminhaoParaDocar;
+                    modal.classList.add('hidden');
+                    atualizarUI();
+                };
+                docasModalContainer.appendChild(button);
+            });
+            modal.classList.remove('hidden');
+        };
 
-            docas[docaIndex] = { nome: caminhao.nome, empresa: caminhao.empresa, pacotes: caminhao.pacotes, status: 'finalizado' };
+        const finalizarCaminhao = (docaIndex) => {
+            const caminhao = docas[docaIndex];
+            if (!caminhao) return;
 
-            localStorage.setItem('historicoEntradas', JSON.stringify(historicoEntradas));
-            localStorage.setItem('historicoPacotesEmpresa', JSON.stringify(historicoPacotesEmpresa));
-            localStorage.setItem('pacotesDescarregados', pacotesDescarregados);
-            localStorage.setItem('logDescarregamento', JSON.stringify(logDescarregamento));
+            const tempoDecorrido = (new Date() - caminhao.horaInicio) / 1000;
+            const tempoDecorridoFormatado = formatarTempo(tempoDecorrido);
+            pacotesDescarregados += caminhao.pacotes;
+            
+            const horaEntrada = new Date(caminhao.horaInicio).getHours();
+            historicoEntradas[horaEntrada] = (historicoEntradas[horaEntrada] || 0) + 1;
 
-            atualizarUI();
-            atualizarGraficos();
-        };
+            historicoPacotesEmpresa[caminhao.empresa] += caminhao.pacotes;
 
-        // Função para liberar uma doca finalizada
-        const liberarDoca = (docaIndex) => {
-            docas[docaIndex] = null;
-            atualizarUI();
-        }
+            logDescarregamento.push({
+                data: new Date().toLocaleDateString(),
+                hora: new Date().toLocaleTimeString(),
+                motorista: caminhao.nome,
+                empresa: caminhao.empresa,
+                pacotes: caminhao.pacotes,
+                tempoNaDoca: tempoDecorridoFormatado,
+                doca: caminhao.doca
+            });
 
-        // Função para renderizar e atualizar a interface
-        const atualizarUI = () => {
-            const totalCaminhoesEspera = Object.values(filas).flat().length;
-            const caminhoesFinalizados = docas.filter(c => c && c.status === 'finalizado').length;
-            document.getElementById('pacotesDescarregados').textContent = pacotesDescarregados;
-            document.getElementById('caminhoesEspera').textContent = totalCaminhoesEspera;
-            document.getElementById('caminhoesDescarregados').textContent = caminhoesFinalizados;
+            docas[docaIndex] = { nome: caminhao.nome, empresa: caminhao.empresa, pacotes: caminhao.pacotes, status: 'finalizado' };
 
-            // Renderizar Filas
-            const filasContainer = document.getElementById('filasEsperaContainer');
-            filasContainer.innerHTML = '';
-            empresas.forEach(empresa => {
-                const filaHtml = `
-                    <div class="card p-4">
-                        <h3 class="font-semibold text-lg text-center mb-2">${empresa}</h3>
-                        <ul id="fila-${empresa.toLowerCase()}" class="list-none space-y-2 max-h-48 overflow-y-auto">
-                            ${filas[empresa].map((caminhao, index) => `
-                                <li class="bg-gray-700 p-2 rounded flex justify-between items-center cursor-pointer hover:bg-gray-600" onclick="docarCaminhao('${empresa}', ${index})">
-                                    <span class="text-sm">${caminhao.nome} - ${caminhao.pacotes} pacotes</span>
-                                    <i class="fa-solid fa-truck text-yellow-500"></i>
-                                </li>
-                            `).join('')}
-                        </ul>
-                    </div>
-                `;
-                filasContainer.innerHTML += filaHtml;
-            });
+            localStorage.setItem('historicoEntradas', JSON.stringify(historicoEntradas));
+            localStorage.setItem('historicoPacotesEmpresa', JSON.stringify(historicoPacotesEmpresa));
+            localStorage.setItem('pacotesDescarregados', pacotesDescarregados);
+            localStorage.setItem('logDescarregamento', JSON.stringify(logDescarregamento));
 
-            // Renderizar Docas
-            const docasContainer = document.getElementById('docasContainer');
-            docasContainer.innerHTML = '';
-            docas.forEach((caminhao, index) => {
-                let docaContent;
-                if (caminhao === null) {
-                    docaContent = `
-                        <div class="text-center text-gray-500">
-                            <i class="fa-solid fa-box-open text-3xl mb-2"></i>
-                            <p>Vaga</p>
-                            <p>Doca ${index + 1}</p>
-                        </div>
-                    `;
-                } else if (caminhao.status === 'finalizado') {
-                    docaContent = `
-                        <div class="text-center text-red-500">
-                            <i class="fa-solid fa-check-circle text-3xl mb-2"></i>
-                            <p class="font-bold">Finalizado</p>
-                            <p>${caminhao.nome} (${caminhao.empresa})</p>
-                            <p class="text-sm">${caminhao.pacotes} pacotes</p>
-                            <button onclick="liberarDoca(${index})" class="mt-2 bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded text-sm transition-transform transform hover:scale-105">
-                                Liberar Doca
-                            </button>
-                        </div>
-                    `;
-                } else {
-                    docaContent = `
-                        <div class="text-center text-blue-400">
-                            <i class="fa-solid fa-truck-ramp-box text-3xl mb-2"></i>
-                            <p>Descarregando</p>
-                            <p class="font-bold">${caminhao.empresa}</p>
-                            <p class="text-sm">${caminhao.nome}</p>
-                            <p class="text-xs text-gray-400" id="timer-${index}">00:00:00</p>
-                            <button onclick="finalizarCaminhao(${index})" class="mt-2 bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-sm transition-transform transform hover:scale-105">
-                                Finalizar
-                            </button>
-                        </div>
-                    `;
-                }
-                const docaHtml = `<div class="card p-4">${docaContent}</div>`;
-                docasContainer.innerHTML += docaHtml;
-            });
-        };
+            atualizarUI();
+            atualizarGraficos();
+        };
 
-        // Variáveis globais para os gráficos
-        let volumeChart, pacotesEmpresaChart, horariosChart;
+        const liberarDoca = (docaIndex) => {
+            docas[docaIndex] = null;
+            atualizarUI();
+        }
 
-        // Função para inicializar os gráficos
-        const inicializarGraficos = () => {
-            const ctxVolume = document.getElementById('volumeChart').getContext('2d');
-            volumeChart = new Chart(ctxVolume, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Descarregado', 'A Descarregar'],
-                    datasets: [{
-                        data: [pacotesDescarregados, Math.max(0, totalPacotesMeta - pacotesDescarregados)],
-                        backgroundColor: ['#38a169', '#cbd5e0'],
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } }
-                }
-            });
+        const atualizarUI = () => {
+            const totalCaminhoesEspera = Object.values(filas).flat().length;
+            const caminhoesFinalizados = docas.filter(c => c && c.status === 'finalizado').length;
+            document.getElementById('pacotesDescarregados').textContent = pacotesDescarregados;
+            document.getElementById('caminhoesEspera').textContent = totalCaminhoesEspera;
+            document.getElementById('caminhoesDescarregados').textContent = caminhoesFinalizados;
 
-            const ctxPacotes = document.getElementById('pacotesEmpresaChart').getContext('2d');
-            pacotesEmpresaChart = new Chart(ctxPacotes, {
-                type: 'doughnut',
-                data: {
-                    labels: empresas,
-                    datasets: [{
-                        data: empresas.map(empresa => historicoPacotesEmpresa[empresa]),
-                        backgroundColor: ['#63b3ed', '#f6ad55', '#fc8181', '#4fd1c5'],
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } }
-                }
-            });
+            const filasContainer = document.getElementById('filasEsperaContainer');
+            filasContainer.innerHTML = '';
+            empresas.forEach(empresa => {
+                const filaHtml = `
+                    <div class="card p-4">
+                        <h3 class="font-semibold text-lg text-center mb-2 text-dhl-red">${empresa}</h3>
+                        <ul id="fila-${empresa.toLowerCase()}" class="list-none space-y-2 max-h-48 overflow-y-auto">
+                            ${filas[empresa].map((caminhao, index) => `
+                                <li class="bg-gray-100 p-2 rounded flex justify-between items-center cursor-pointer hover:bg-gray-200" onclick="docarCaminhao('${empresa}', ${index})">
+                                    <span class="text-sm text-gray-800">${caminhao.nome} - ${caminhao.pacotes} pacotes</span>
+                                    <i class="fa-solid fa-truck text-dhl-red"></i>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `;
+                filasContainer.innerHTML += filaHtml;
+            });
 
-            const ctxHorarios = document.getElementById('horariosChart').getContext('2d');
-            horariosChart = new Chart(ctxHorarios, {
-                type: 'bar',
-                data: {
-                    labels: Array.from({ length: 24 }, (_, i) => `${i}h`),
-                    datasets: [{
-                        label: 'Entradas de Caminhões',
-                        data: Array.from({ length: 24 }, (_, i) => historicoEntradas[i] || 0),
-                        backgroundColor: '#805ad5',
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { ticks: { color: 'white' }, grid: { color: '#4a5568' } },
-                        y: { ticks: { color: 'white' }, grid: { color: '#4a5568' } }
-                    },
-                    plugins: { legend: { labels: { color: 'white' } } }
-                }
-            });
-        };
+            const docasContainer = document.getElementById('docasContainer');
+            docasContainer.innerHTML = '';
+            docas.forEach((caminhao, index) => {
+                let docaContent;
+                if (caminhao === null) {
+                    docaContent = `
+                        <div class="text-center text-gray-400">
+                            <i class="fa-solid fa-box-open text-3xl mb-2"></i>
+                            <p>Vaga</p>
+                            <p>Doca ${index + 1}</p>
+                        </div>
+                    `;
+                } else if (caminhao.status === 'finalizado') {
+                    docaContent = `
+                        <div class="text-center text-dhl-red">
+                            <i class="fa-solid fa-check-circle text-3xl mb-2"></i>
+                            <p class="font-bold">Finalizado</p>
+                            <p>${caminhao.nome} (${caminhao.empresa})</p>
+                            <p class="text-sm">${caminhao.pacotes} pacotes</p>
+                            <button onclick="liberarDoca(${index})" class="mt-2 bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded text-sm transition-transform transform hover:scale-105">
+                                Liberar Doca
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    docaContent = `
+                        <div class="text-center text-dhl-red">
+                            <i class="fa-solid fa-truck-ramp-box text-3xl mb-2"></i>
+                            <p>Descarregando</p>
+                            <p class="font-bold">${caminhao.empresa}</p>
+                            <p class="text-sm">${caminhao.nome}</p>
+                            <p class="text-xs text-gray-500" id="timer-${index}">00:00:00</p>
+                            <button onclick="finalizarCaminhao(${index})" class="mt-2 bg-dhl-red hover:bg-dhl-red-dark text-white font-bold py-1 px-3 rounded text-sm transition-transform transform hover:scale-105">
+                                Finalizar
+                            </button>
+                        </div>
+                    `;
+                }
+                const docaHtml = `<div class="card p-4">${docaContent}</div>`;
+                docasContainer.innerHTML += docaHtml;
+            });
+        };
 
-        // Função para atualizar os dados dos gráficos
-        const atualizarGraficos = () => {
-            volumeChart.data.datasets[0].data = [pacotesDescarregados, Math.max(0, totalPacotesMeta - pacotesDescarregados)];
-            volumeChart.update();
+        let volumeChart, pacotesEmpresaChart, horariosChart;
 
-            pacotesEmpresaChart.data.datasets[0].data = empresas.map(empresa => historicoPacotesEmpresa[empresa]);
-            pacotesEmpresaChart.update();
+        const inicializarGraficos = () => {
+            const ctxVolume = document.getElementById('volumeChart').getContext('2d');
+            volumeChart = new Chart(ctxVolume, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Descarregado', 'A Descarregar'],
+                    datasets: [{
+                        data: [pacotesDescarregados, Math.max(0, totalPacotesMeta - pacotesDescarregados)],
+                        backgroundColor: ['#D40511', '#FFCC00'], // Vermelho e Amarelo DHL
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } }
+                }
+            });
 
-            horariosChart.data.datasets[0].data = Array.from({ length: 24 }, (_, i) => historicoEntradas[i] || 0);
-            horariosChart.update();
-        };
+            const ctxPacotes = document.getElementById('pacotesEmpresaChart').getContext('2d');
+            pacotesEmpresaChart = new Chart(ctxPacotes, {
+                type: 'doughnut',
+                data: {
+                    labels: empresas,
+                    datasets: [{
+                        data: empresas.map(empresa => historicoPacotesEmpresa[empresa]),
+                        backgroundColor: ['#D40511', '#FFCC00', '#63b3ed', '#4fd1c5'], // Cores DHL e outras
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } }
+                }
+            });
 
-        // Função para baixar os dados em um arquivo CSV
-        const downloadCSV = () => {
-            const header = ["Data", "Hora", "Motorista", "Empresa", "Pacotes", "Tempo na Doca", "Doca"];
-            const csv = [
-                header.join(","),
-                ...logDescarregamento.map(d => `${d.data},${d.hora},${d.motorista},${d.empresa},${d.pacotes},${d.tempoNaDoca},${d.doca}`)
-            ].join("\n");
-            
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", "dados_gestao_frota.csv");
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            showAlert('Dados baixados com sucesso!');
-        };
+            const ctxHorarios = document.getElementById('horariosChart').getContext('2d');
+            horariosChart = new Chart(ctxHorarios, {
+                type: 'bar',
+                data: {
+                    labels: Array.from({ length: 24 }, (_, i) => `${i}h`),
+                    datasets: [{
+                        label: 'Entradas de Caminhões',
+                        data: Array.from({ length: 24 }, (_, i) => historicoEntradas[i] || 0),
+                        backgroundColor: '#D40511', // Vermelho DHL
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#333333' }, grid: { color: '#FFCC00' } },
+                        y: { beginAtZero: true, ticks: { color: '#333333' }, grid: { color: '#FFCC00' } }
+                    },
+                    plugins: { legend: { labels: { color: '#333333' } } }
+                }
+            });
+        };
 
+        const atualizarGraficos = () => {
+            volumeChart.data.datasets[0].data = [pacotesDescarregados, Math.max(0, totalPacotesMeta - pacotesDescarregados)];
+            volumeChart.update();
 
-        // Event Listeners para a adição manual
-        document.getElementById('setPacotesBtn').addEventListener('click', () => {
-            const input = document.getElementById('totalPacotesInput');
-            const novoTotal = parseInt(input.value);
-            if (novoTotal > 0) {
-                totalPacotesMeta = novoTotal;
-                localStorage.setItem('totalPacotesMeta', totalPacotesMeta);
-                atualizarGraficos();
-                showAlert(`Meta de pacotes definida para ${novoTotal}.`);
-            } else {
-                showAlert('Por favor, insira um número válido para o total de pacotes.');
-            }
-        });
+            pacotesEmpresaChart.data.datasets[0].data = empresas.map(empresa => historicoPacotesEmpresa[empresa]);
+            pacotesEmpresaChart.update();
 
-        document.getElementById('addMotoristaBtn').addEventListener('click', () => {
-            const empresa = document.getElementById('empresaSelect').value;
-            const motoristaNomeInput = document.getElementById('motoristaNomeInput');
-            const pacotesInput = document.getElementById('pacotesInput');
-            const nome = motoristaNomeInput.value.trim();
-            const pacotes = parseInt(pacotesInput.value);
+            horariosChart.data.datasets[0].data = Array.from({ length: 24 }, (_, i) => historicoEntradas[i] || 0);
+            horariosChart.update();
+        };
 
-            if (nome === '' || pacotes <= 0) {
-                showAlert('Por favor, preencha o nome do motorista e o número de pacotes corretamente.');
-                return;
-            }
+        const downloadCSV = () => {
+            const header = ["Data", "Hora", "Motorista", "Empresa", "Pacotes", "Tempo na Doca", "Doca"];
+            const csv = [
+                header.join(","),
+                ...logDescarregamento.map(d => `${d.data},${d.hora},${d.motorista},${d.empresa},${d.pacotes},${d.tempoNaDoca},${d.doca}`)
+            ].join("\n");
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "dados_gestao_frota.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showAlert('Dados baixados com sucesso!');
+        };
 
-            const caminhao = { nome, empresa, pacotes };
-            filas[empresa].push(caminhao);
-            motoristaNomeInput.value = ''; // Limpa o campo
-            pacotesInput.value = ''; // Limpa o campo
-            atualizarUI();
-            showAlert(`Motorista ${nome} (${empresa}) adicionado à fila com ${pacotes} pacotes.`);
-        });
+        const resetarDadosDoDia = () => {
+            if (confirm('Tem certeza que deseja resetar os dados do dia? Isso limpará todas as métricas e logs.')) {
+                pacotesDescarregados = 0;
+                docas = Array(9).fill(null);
+                filas = { Prálog: [], Imediato: [], Hawk: [], Ontime: [] };
+                historicoEntradas = {};
+                historicoPacotesEmpresa = {};
+                logDescarregamento = [];
+                localStorage.clear();
+                inicializarApp();
+                showAlert('Dados do dia resetados com sucesso!');
+            }
+        };
 
-        document.getElementById('downloadBtn').addEventListener('click', downloadCSV);
-        
-        // Inicia a aplicação
-        window.onload = inicializarApp;
+        document.getElementById('setPacotesBtn').addEventListener('click', () => {
+            const input = document.getElementById('totalPacotesInput');
+            const novoTotal = parseInt(input.value);
+            if (novoTotal > 0) {
+                totalPacotesMeta = novoTotal;
+                localStorage.setItem('totalPacotesMeta', totalPacotesMeta);
+                atualizarGraficos();
+                showAlert(`Meta de pacotes definida para ${novoTotal}.`);
+            } else {
+                showAlert('Por favor, insira um número válido para o total de pacotes.');
+            }
+        });
 
-    </script>
+        document.getElementById('addMotoristaBtn').addEventListener('click', () => {
+            const empresa = document.getElementById('empresaSelect').value;
+            const motoristaNomeInput = document.getElementById('motoristaNomeInput');
+            const pacotesInput = document.getElementById('pacotesInput');
+            const nome = motoristaNomeInput.value.trim();
+            const pacotes = parseInt(pacotesInput.value);
+
+            if (nome === '' || pacotes <= 0) {
+                showAlert('Por favor, preencha o nome do motorista e o número de pacotes corretamente.');
+                return;
+            }
+
+            const caminhao = { nome, empresa, pacotes };
+            filas[empresa].push(caminhao);
+            motoristaNomeInput.value = '';
+            pacotesInput.value = '';
+            atualizarUI();
+            showAlert(`Motorista ${nome} (${empresa}) adicionado à fila com ${pacotes} pacotes.`);
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', downloadCSV);
+        document.getElementById('resetBtn').addEventListener('click', resetarDadosDoDia);
+        
+        window.onload = inicializarApp;
+
+    </script>
 </body>
 </html>
