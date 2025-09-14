@@ -1,0 +1,190 @@
+// 1. IMPORTAÇÕES NECESSÁRIAS
+const express = require('express');
+const http = require('http');
+const { Server } = require("socket.io");
+const cors = require('cors');
+
+// 2. CONFIGURAÇÃO DO SERVIDOR
+const app = express();
+app.use(cors()); // Permite a comunicação entre as páginas e o servidor
+app.use(express.json());
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Em produção, restrinja para o seu domínio
+    methods: ["GET", "POST"]
+  }
+});
+
+// 3. "BANCO DE DADOS" EM MEMÓRIA
+let estado = {
+    operacaoIniciada: false,
+    fila: [],
+    docas: Array(9).fill(null).map((_, i) => ({ id: i + 1, status: 'livre', motorista: null })),
+    stats: {
+        totalPacotes: 0,
+        finalizados: 0,
+        entradasPorHora: {},
+        pacotesPorEmpresa: {}
+    },
+    logNotificacoes: []
+};
+
+// 4. FUNÇÕES DE LÓGICA PRINCIPAL
+
+// Função para adicionar uma notificação (simulação do WhatsApp)
+function adicionarLog(message) {
+    console.log(`[LOG WHATSAPP] ${message}`);
+    estado.logNotificacoes.push({ message, timestamp: new Date() });
+    // Mantém o log com no máximo 10 mensagens para não sobrecarregar
+    if (estado.logNotificacoes.length > 10) {
+        estado.logNotificacoes.shift();
+    }
+}
+
+// Envia o estado atualizado para todos os clientes
+function broadcastUpdate() {
+    // Para o dashboard do gestor
+    io.emit('update', estado);
+    
+    // Para cada motorista na fila
+    estado.fila.forEach((motorista, index) => {
+        if (motorista.socketId) {
+            io.to(motorista.socketId).emit('update-motorista', {
+                nome: motorista.nome,
+                status: 'na_fila',
+                posicao: index + 1
+            });
+        }
+    });
+}
+
+// A função mágica que automatiza as chamadas
+function chamarProximo() {
+    if (!estado.operacaoIniciada || estado.fila.length === 0) return;
+
+    const docaLivre = estado.docas.find(d => d.status === 'livre');
+    if (docaLivre) {
+        const motorista = estado.fila.shift(); // Pega o primeiro da fila
+        motorista.status = 'chamado';
+        docaLivre.status = 'chamado';
+        docaLivre.motorista = motorista;
+
+        adicionarLog(`Para ${motorista.nome} (${motorista.whatsapp}): Sua vez! Dirija-se à Doca ${docaLivre.id}.`);
+        
+        // Avisa o motorista específico
+        if (motorista.socketId) {
+            io.to(motorista.socketId).emit('update-motorista', { status: 'chamado', doca: docaLivre.id });
+        }
+        broadcastUpdate();
+    }
+}
+
+// 5. ENDPOINTS DA API (para registro)
+
+app.post('/registrar', (req, res) => {
+    const novoMotorista = {
+        id: Date.now(),
+        ...req.body,
+        status: 'na_fila',
+        socketId: null
+    };
+    estado.fila.push(novoMotorista);
+
+    adicionarLog(`Para ${novoMotorista.nome} (${novoMotorista.whatsapp}): Bem-vindo! Sua senha é a posição ${estado.fila.length} na fila.`);
+    
+    // Se a operação já começou, tenta chamar imediatamente
+    if (estado.operacaoIniciada) {
+        chamarProximo();
+    }
+    
+    broadcastUpdate();
+    res.json({ message: 'Registrado com sucesso!', motoristaId: novoMotorista.id });
+});
+
+// 6. LÓGICA DE COMUNICAÇÃO EM TEMPO REAL (SOCKET.IO)
+
+io.on('connection', (socket) => {
+    console.log('Um cliente se conectou:', socket.id);
+    // Envia o estado atual assim que um cliente (gestor) se conecta
+    socket.emit('update', estado);
+
+    socket.on('motorista-conectado', (motoristaId) => {
+        const motorista = estado.fila.find(m => m.id == motoristaId);
+        if (motorista) {
+            motorista.socketId = socket.id;
+            console.log(`Motorista ${motorista.nome} associado ao socket ${socket.id}`);
+            // Envia o status atualizado para este motorista
+            io.to(socket.id).emit('update-motorista', { nome: motorista.nome, status: 'na_fila', posicao: estado.fila.indexOf(motorista) + 1 });
+        }
+    });
+    
+    socket.on('motorista-reconectado', (motoristaId) => {
+         const motoristaNaFila = estado.fila.find(m => m.id == motoristaId);
+         const motoristaNaDoca = estado.docas.find(d => d.motorista?.id == motoristaId);
+
+         if (motoristaNaFila) motoristaNaFila.socketId = socket.id;
+         if (motoristaNaDoca) motoristaNaDoca.motorista.socketId = socket.id;
+         
+         // Reenvia o último status para o motorista que atualizou a página
+         if(motoristaNaFila) io.to(socket.id).emit('update-motorista', { nome: motoristaNaFila.nome, status: 'na_fila', posicao: estado.fila.indexOf(motoristaNaFila) + 1 });
+         if(motoristaNaDoca) io.to(socket.id).emit('update-motorista', { status: motoristaNaDoca.status, doca: motoristaNaDoca.id });
+    });
+
+    socket.on('iniciar-operacao', () => {
+        if (!estado.operacaoIniciada) {
+            estado.operacaoIniciada = true;
+            adicionarLog(`[SISTEMA] Operação iniciada pelo gestor.`);
+            console.log('Operação iniciada!');
+            chamarProximo();
+            broadcastUpdate();
+        }
+    });
+
+    socket.on('iniciar-descarga', (motoristaId) => {
+        const doca = estado.docas.find(d => d.motorista?.id == motoristaId);
+        if (doca) {
+            doca.status = 'ocupada';
+            doca.motorista.horaInicio = new Date();
+            // Atualiza estatísticas
+            const hora = new Date().getHours();
+            estado.stats.entradasPorHora[hora] = (estado.stats.entradasPorHora[hora] || 0) + 1;
+        }
+        broadcastUpdate();
+    });
+
+    socket.on('finalizar-descarga', (motoristaId) => {
+        const docaIndex = estado.docas.findIndex(d => d.motorista?.id == motoristaId);
+        if (docaIndex !== -1) {
+            const doca = estado.docas[docaIndex];
+            const motorista = doca.motorista;
+
+            // Atualiza estatísticas
+            estado.stats.totalPacotes += motorista.pacotes;
+            estado.stats.finalizados++;
+            estado.stats.pacotesPorEmpresa[motorista.empresa] = (estado.stats.pacotesPorEmpresa[motorista.empresa] || 0) + motorista.pacotes;
+
+            // Libera a doca
+            estado.docas[docaIndex] = { id: doca.id, status: 'livre', motorista: null };
+            
+            // Avisa o motorista que terminou
+            if (motorista.socketId) {
+                io.to(motorista.socketId).emit('update-motorista', { status: 'finalizado' });
+            }
+
+            adicionarLog(`Motorista ${motorista.nome} finalizou na Doca ${doca.id}.`);
+            
+            // Chama o próximo da fila
+            chamarProximo();
+            broadcastUpdate();
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Um cliente se desconectou:', socket.id);
+    });
+});
+
+// 7. INICIA O SERVIDOR
+const PORT = 3000;
+server.listen(PORT, () => console.log(`Servidor de automação rodando em http://localhost:${PORT}`));
