@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Gestão - Consolidação</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <!-- Biblioteca do Socket.IO para comunicação em tempo real -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #1a202c; color: #e2e8f0; }
+        .card { background-color: #2d3748; border-radius: 12px; padding: 1.5rem; }
+        .chart-container-small { width: 100%; max-width: 200px; margin: 0 auto; }
+        .fila-item { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="p-6">
+    <div class="container mx-auto max-w-[1600px]">
+        <div class="flex justify-center items-center mb-8">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/DHL_logo.svg/2560px-DHL_logo.svg.png" alt="DHL Logo" class="h-12 mr-4 filter invert">
+            <h1 class="text-3xl font-bold text-center text-white">Painel de Gestão - Consolidação</h1>
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 text-center">
+            <div class="card"><div class="text-sm font-semibold text-gray-400">Pacotes Descarregados</div><div id="pacotesDescarregados" class="text-4xl font-bold mt-2 text-green-400">0</div></div>
+            <div class="card"><div class="text-sm font-semibold text-gray-400">Caminhões à Espera</div><div id="caminhoesEspera" class="text-4xl font-bold mt-2 text-yellow-400">0</div></div>
+            <div class="card"><div class="text-sm font-semibold text-gray-400">Docas Ocupadas</div><div id="docasOcupadas" class="text-4xl font-bold mt-2 text-blue-400">0</div></div>
+            <div class="card"><div class="text-sm font-semibold text-gray-400">Caminhões Finalizados</div><div id="caminhoesFinalizados" class="text-4xl font-bold mt-2 text-red-400">0</div></div>
+        </div>
+        
+        <div class="card mb-8 text-center">
+             <h2 class="text-xl font-semibold mb-4">Controle da Operação</h2>
+             <button id="startBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition-transform transform hover:scale-105 text-lg">
+                <i class="fas fa-play mr-2"></i> Iniciar Operação
+            </button>
+            <p id="statusOperacao" class="text-gray-400 mt-2">O sistema está aguardando o início.</p>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-6">
+                 <div class="card">
+                    <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">Filas de Espera</h2>
+                    <div id="filaContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <!-- Filas das empresas serão inseridas aqui -->
+                    </div>
+                </div>
+                <div class="card">
+                    <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">Docas de Desembarque</h2>
+                    <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4" id="docasContainer">
+                        <!-- Docas serão inseridas aqui pelo JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-1 space-y-6">
+                 <div class="card">
+                    <h2 class="text-xl font-semibold mb-4"><i class="fab fa-whatsapp text-green-400 mr-2"></i>Log de Notificações (Simulação)</h2>
+                    <div id="logContainer" class="space-y-2 text-sm max-h-96 overflow-y-auto bg-gray-800 p-2 rounded">
+                         <p class="text-gray-500">Aguardando eventos...</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2 class="text-xl font-semibold mb-4 text-center">Entradas por Hora</h2>
+                    <canvas id="horariosChart" style="max-height: 250px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // Conecta ao servidor de automação. Troque 'http://localhost:3000' pelo endereço do seu servidor se for diferente.
+    const socket = io("http://localhost:3000");
+
+    const startBtn = document.getElementById('startBtn');
+    startBtn.addEventListener('click', () => {
+        socket.emit('iniciar-operacao');
+        startBtn.disabled = true;
+        startBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+        startBtn.classList.add('bg-gray-500', 'cursor-not-allowed');
+        document.getElementById('statusOperacao').textContent = 'Operação em andamento. O sistema está chamando os motoristas automaticamente.';
+    });
+
+    // Ouve o evento 'update' vindo do servidor com todos os dados atualizados
+    socket.on('update', (data) => {
+        // Atualiza KPIs
+        document.getElementById('pacotesDescarregados').textContent = data.stats.totalPacotes;
+        document.getElementById('caminhoesEspera').textContent = data.fila.length;
+        document.getElementById('docasOcupadas').textContent = data.docas.filter(d => d.status === 'ocupada').length;
+        document.getElementById('caminhoesFinalizados').textContent = data.stats.finalizados;
+
+        // Atualiza Fila de Espera
+        const filaContainer = document.getElementById('filaContainer');
+        filaContainer.innerHTML = '';
+        
+        const empresas = ['Prálog', 'Imediato', 'Hawk', 'Ontime'];
+        if (data.fila.length === 0 && !empresas.some(empresa => data.fila.some(m => m.empresa === empresa))) {
+             filaContainer.innerHTML = '<p class="text-gray-500 text-center col-span-2">Nenhum motorista na fila.</p>';
+        } else {
+            empresas.forEach(empresa => {
+                const motoristasDaEmpresa = data.fila.filter(m => m.empresa === empresa);
+                
+                const empresaCard = document.createElement('div');
+                empresaCard.className = 'bg-gray-800 p-4 rounded-lg';
+                
+                let motoristasHtml = '';
+                if (motoristasDaEmpresa.length > 0) {
+                    motoristasHtml = motoristasDaEmpresa.map((motorista) => {
+                        const posicaoGlobal = data.fila.findIndex(m => m.id === motorista.id) + 1;
+                        return `<li class="text-sm flex justify-between items-center py-1">
+                                    <span><span class="font-bold text-gray-400 w-6 inline-block">${posicaoGlobal}º</span> ${motorista.nome}</span>
+                                    <span class="text-xs font-mono bg-gray-700 px-2 py-1 rounded">${motorista.pacotes}</span>
+                                </li>`;
+                    }).join('');
+                } else {
+                    motoristasHtml = `<li class="text-xs text-gray-500 text-center py-1">Fila vazia</li>`;
+                }
+
+                empresaCard.innerHTML = `
+                    <h3 class="font-semibold text-center text-lg mb-2 text-gray-300">${empresa}</h3>
+                    <ul class="space-y-2">${motoristasHtml}</ul>
+                `;
+                filaContainer.appendChild(empresaCard);
+            });
+        }
+        
+        // Atualiza Status das Docas
+        const docasContainer = document.getElementById('docasContainer');
+        docasContainer.innerHTML = '';
+        data.docas.forEach(doca => {
+            let statusClass, icon, contentHtml;
+
+            if (doca.status === 'livre') {
+                statusClass = 'text-gray-500';
+                icon = 'fa-dolly';
+                contentHtml = `
+                    <i class="fa-solid ${icon} text-4xl mb-2"></i>
+                    <p class="font-semibold">Vaga</p>
+                    <p class="text-sm">Doca ${doca.id}</p>`;
+            } else if (doca.status === 'ocupada') {
+                statusClass = 'text-blue-400';
+                icon = 'fa-truck-ramp-box';
+                const tempoDecorrido = (Date.now() - new Date(doca.motorista.horaInicio).getTime()) / 1000;
+                const h = Math.floor(tempoDecorrido / 3600).toString().padStart(2, '0');
+                const m = Math.floor((tempoDecorrido % 3600) / 60).toString().padStart(2, '0');
+                const s = Math.floor(tempoDecorrido % 60).toString().padStart(2, '0');
+                contentHtml = `
+                    <i class="fa-solid ${icon} text-4xl mb-2"></i>
+                    <p class="font-bold">${doca.motorista.nome}</p>
+                    <p class="text-sm text-gray-300">Doca ${doca.id}</p>
+                    <p class="text-lg text-yellow-400 font-mono mt-1">${h}:${m}:${s}</p>`;
+            } else { // finalizado
+                statusClass = 'text-red-500';
+                icon = 'fa-check-circle';
+                contentHtml = `
+                    <i class="fa-solid ${icon} text-4xl mb-2"></i>
+                    <p class="font-semibold">Finalizado</p>
+                    <p class="text-sm">Doca ${doca.id}</p>`;
+            }
+
+            const docaCard = document.createElement('div');
+            docaCard.className = `bg-gray-800 p-4 rounded-lg text-center ${statusClass} flex flex-col justify-center items-center min-h-[140px]`;
+            docaCard.innerHTML = contentHtml;
+            docasContainer.appendChild(docaCard);
+        });
+        
+        // Atualiza Log de Notificações
+        const logContainer = document.getElementById('logContainer');
+        logContainer.innerHTML = '';
+        data.logNotificacoes.forEach(log => {
+           logContainer.innerHTML = `<div class="bg-gray-700 p-2 rounded mb-1">
+                <p class="text-xs text-gray-400">${new Date(log.timestamp).toLocaleTimeString()}</p>
+                <p>${log.message}</p>
+            </div>` + logContainer.innerHTML;
+        });
+
+        // Atualiza Gráficos
+        horariosChart.data.datasets[0].data = Array.from({ length: 24 }, (_, i) => data.stats.entradasPorHora[i] || 0);
+        horariosChart.update();
+    });
+
+    let horariosChart, pacotesEmpresaChart;
+    window.onload = () => {
+        horariosChart = new Chart(document.getElementById('horariosChart').getContext('2d'), {
+            type: 'bar',
+            data: { labels: Array.from({ length: 24 }, (_, i) => `${i}h`), datasets: [{ label: 'Entradas de Caminhões', data: [], backgroundColor: '#805ad5' }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { color: 'white' }, grid: { color: '#4a5568' } }, y: { beginAtZero: true, ticks: { color: 'white' }, grid: { color: '#4a5568' } } }, plugins: { legend: { display: false } } }
+        });
+    };
+</script>
+</body>
+</html>
+
+
